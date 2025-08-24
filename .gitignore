@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.log
+*.pyc
+*.pyo
+data/alert_ips.txt
+data/blocked_ips.txt
