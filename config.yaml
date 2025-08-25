@@ -1,0 +1,12 @@
+log_dir: "C:/Users/bruno/Desktop/test project/test"
+monitor_log_dir: "C:/Users/bruno/Desktop/test project/logs"
+login_fail_limit: 5
+login_fail_window: 60
+allowed_countries:
+  - BRAZIL
+  - UNITED STATES
+  - USA
+  - RUSSIAN FEDERATION
+  - CHINA
+  - GERMANY
+  - INDIA
