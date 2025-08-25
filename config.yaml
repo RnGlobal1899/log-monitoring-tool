@@ -1,5 +1,5 @@
-log_dir: "C:/Users/bruno/Desktop/test project/test"
-monitor_log_dir: "C:/Users/bruno/Desktop/test project/logs"
+log_dir: "logs/access_logs"
+monitor_log_dir: "logs/monitoring_logs"
 login_fail_limit: 5
 login_fail_window: 60
 allowed_countries:
