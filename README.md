@@ -54,6 +54,23 @@ logs/alerts.log → registro de alertas gerados
 
 logs/errors.log → registro de erros de execução
 
+## 🔍 Validação Automática dos Logs
+
+Este repositório inclui um script de validação (`tests/validate_logs.py`) que verifica automaticamente se os logs estão corretos de acordo com as seguintes regras:
+
+- Logins de **países permitidos** (`Brazil`, `United States`, `Canada`, `United Kingdom`) devem aparecer apenas como `success`.
+- Logins de **países não permitidos** devem sempre aparecer como `fail`.
+
+### ▶️ Como rodar o validador
+
+No terminal, execute:
+
+```bash
+python tests/validate_logs.py "Caminho do arquivo .log"
+```
+Caso não especifique um caminho, o padrão será "/logs/monitoring_logs/system.log".
+
+
 ## Configuração
 
 As opções principais ficam em config.yaml.
