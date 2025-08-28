@@ -2,7 +2,7 @@ import yaml
 import datetime
 import collections
 import os
-from log_utils import setup_logger
+from log_utils import setup_logger, mask_user
 from ip_utils import get_country_by_ip
 from parser import get_log_files, read_logs, parse_log_line
 
@@ -10,17 +10,17 @@ def load_blocked_ips(filename="blocked_ips.txt"):
     if not os.path.exists(filename):
         return set()
     with open(filename, "r") as f:
-        return set(line.strip().split(" - ")[0] for line in f if line.strip())
+        return set(line.strip().split(" - ")[1] for line in f if line.strip())
 
-def save_blocked_ips(ip, country, filename="blocked_ips.txt"):
+def save_blocked_ips(user, ip, country, filename="blocked_ips.txt"):
     already_saved = set()
     if os.path.exists(filename):
         with open(filename, "r") as f:
-            already_saved = set(line.strip().split(" - ")[0] for line in f if line.strip())
+            already_saved = set(line.strip().split(" - ")[1] for line in f if line.strip())
     if ip not in already_saved:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with open(filename, "a") as f:
-            f.write(f"{ip} - {country} - {timestamp}\n")
+            f.write(f"{user} - {ip} - {country} - {timestamp}\n")
 
 def main():
     # Load config
@@ -57,12 +57,12 @@ def main():
         # Block IPs from not allowed countries
         if country_norm not in allowed_countries:
             if ip not in blocked_ips:
-                logger.warning(f"IP {ip} from {country_norm} blocked (country restriction).")
+                logger.warning(f"IP {ip} from {country_norm}, user: {mask_user(user)} blocked (country restriction).")
                 blocked_ips.add(ip)
-                save_blocked_ips(ip, country_norm)
+                save_blocked_ips(user, ip, country_norm)
             else:
                 if ip not in processed_blocks:
-                    logger.info(f"IP {ip} from {country_norm} already blocked.")
+                    logger.info(f"IP {ip} from {country_norm}, user: {mask_user(user)} already blocked.")
             processed_blocks.add(ip)
             continue
 
@@ -80,17 +80,17 @@ def main():
                     already_alerted = set()
                     if os.path.exists("alert_ips.txt"):
                         with open("alert_ips.txt", "r") as alert_file:
-                            already_alerted = set(line.strip().split(" - ")[0] for line in alert_file if line.strip())
+                            already_alerted = set(line.strip().split(" - ")[1] for line in alert_file if line.strip())
 
                     if ip not in already_alerted:
                         alert_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         with open("alert_ips.txt", "a") as alert_file:
-                            alert_file.write(f"{ip} - {country_norm} - {alert_time}\n")
-                        logger.warning(f"IP {ip} ({country_norm}) exceeded login attempts. Added to alert list.")
+                            alert_file.write(f"{user} - {ip} - {country_norm} - {alert_time}\n")
+                        logger.warning(f"IP {ip} ({country_norm}), user: {mask_user(user)} exceeded login attempts. Added to alert list.")
                         alert_ips.add(ip)
                     else:
                         if ip not in processed_alerts:
-                            logger.info(f"IP {ip} ({country_norm}) exceeded login fail limit. Already in alert list.")
+                            logger.info(f"IP {ip} ({country_norm}), user: {mask_user(user)} exceeded login fail limit. Already in alert list.")
                         processed_alerts.add(ip)
 
     if not alert_ips and not blocked_ips:

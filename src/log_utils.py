@@ -41,3 +41,11 @@ def setup_logger(monitor_log_dir):
     logger.addHandler(console_handler)
 
     return logger
+
+# Function to mask user identifiers for privacy
+def mask_user(user: str) -> str:
+    if not user:
+        return "unknown"
+    if len(user) <= 2:
+        return "*" * len(user)
+    return user[:2] + "*" * (len(user) - 2)
