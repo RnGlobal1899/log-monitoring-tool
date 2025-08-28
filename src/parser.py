@@ -12,7 +12,7 @@ def read_logs(files):
                 yield line.strip()
 
 def parse_log_line(line):
-    regex = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}), IP: ([\d\.]+), user: (\w+), action: (\w+), result: (\w+)"
+    regex = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}), IP: ([\d\.]+), user: ([^,]+), action: (\w+), result: (\w+)"
     match = re.match(regex, line)
     if match:
         try:
