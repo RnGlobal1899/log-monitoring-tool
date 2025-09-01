@@ -14,11 +14,10 @@ firewall-log-analyzer/
 │   ├── parser.py         # Leitura e parsing de arquivos de log
 │
 │── tests/                # Testes automatizados com pytest
-│   ├── test_parser.py
+│   ├── generate_test_logs.py
 │   ├── test_ip_utils.py
-│
-│── examples/             # Scripts auxiliares e exemplos
-│   └── generate_test_logs.py   # Gera logs artificiais para testes
+│   ├── test_parser.py
+│   ├── validate_logs.py
 │
 │── config.yaml           # Arquivo de configuração
 │── requirements.txt      # Dependências do projeto
