@@ -1,7 +1,6 @@
 import os
 import logging
-
-
+import yaml
 import os
 import logging
 
@@ -43,9 +42,14 @@ def setup_logger(monitor_log_dir):
     return logger
 
 # Function to mask user identifiers for privacy
+with open("config.yaml", "r") as f:
+    CONFIG = yaml.safe_load(f)
+
+MASK_USER_ENABLED = CONFIG.get("mask_user", True)
+
 def mask_user(user: str) -> str:
-    if not user:
-        return "unknown"
+    if not MASK_USER_ENABLED:
+        return user
     if len(user) <= 2:
         return "*" * len(user)
     return user[:2] + "*" * (len(user) - 2)

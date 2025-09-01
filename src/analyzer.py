@@ -2,6 +2,7 @@ import yaml
 import datetime
 import collections
 import os
+import re
 from log_utils import setup_logger, mask_user
 from ip_utils import get_country_by_ip
 from parser import get_log_files, read_logs, parse_log_line
@@ -21,6 +22,12 @@ def save_blocked_ips(user, ip, country, filename="blocked_ips.txt"):
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with open(filename, "a") as f:
             f.write(f"{user} - {ip} - {country} - {timestamp}\n")
+    
+def extract_user_from_error_line(line: str) -> str:
+    match = re.search(r"user:\s*([^,]+)", line)
+    if match:
+        return mask_user(match.group(1).strip())
+    return "unknown"
 
 def main():
     # Load config
@@ -45,7 +52,9 @@ def main():
     for line in read_logs(log_files):
         data = parse_log_line(line)
         if not data:
-            logger.error(f"Invalid log line: {line}")
+            masked_user = extract_user_from_error_line(line)
+            masked_line = re.sub(r"user:\s*([^, ]+)", f"user: {masked_user}", line)
+            logger.error(f"Invalid log line: {masked_line}")
             continue
 
         timestamp, ip, user, action, result = data
