@@ -1,10 +1,13 @@
-# Ignorar logs grandes e arquivos temporários
+# Ignore large logs and temporary files
 logs/
 *.log
 *.txt
 
-# Ignorar caches do Python
+# Ignore Python cache files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# ingnore pycache folders
+__pycache__/
