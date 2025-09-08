@@ -101,8 +101,9 @@ Os testes ficam na pasta tests/ e usam pytest.
 
 Rodar todos os testes:
 
-pytest -v
-
+```bash
+python -m pytest -v
+```
 ## Futuras melhorias
 
 - Leitura contínua de logs (modo "tail")
