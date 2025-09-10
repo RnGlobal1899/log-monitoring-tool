@@ -29,6 +29,19 @@ def extract_user_from_error_line(line: str) -> str:
         return mask_user(match.group(1).strip())
     return "unknown"
 
+def normalize_result(result: str) -> str:
+    if result in ["fail", "Failed", "403"]:
+        return "fail"
+    elif result in ["Accepted", "200"]:
+        return "success"
+    else:
+        return "unkown"
+    
+def normalize_action(action: str) -> str:
+    if action.lower() in ["login", "ssh_login", "post"]:
+        return "login"
+    return action
+
 def main():
     # Load config
     with open("config.yaml", "r") as f:
@@ -58,6 +71,11 @@ def main():
             continue
 
         timestamp, ip, user, action, result = data
+
+        #normalize
+        action = normalize_action(action)
+        result = normalize_result(result)
+        
         if action != "login":
             continue
 
@@ -66,12 +84,12 @@ def main():
         # Block IPs from not allowed countries
         if country_norm not in allowed_countries:
             if ip not in blocked_ips:
-                logger.warning(f"IP {ip} from {country_norm}, user: {mask_user(user)} blocked (country restriction).")
+                logger.warning(f"IP {ip} from ({country_norm}), user: {mask_user(user)} blocked (country restriction).")
                 blocked_ips.add(ip)
                 save_blocked_ips(user, ip, country_norm)
             else:
                 if ip not in processed_blocks:
-                    logger.info(f"IP {ip} from {country_norm}, user: {mask_user(user)} already blocked.")
+                    logger.info(f"IP {ip} from ({country_norm}), user: {mask_user(user)} already blocked.")
             processed_blocks.add(ip)
             continue
 
