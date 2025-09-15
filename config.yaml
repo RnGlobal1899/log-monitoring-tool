@@ -2,6 +2,7 @@ log_dir: "logs/access_logs"
 monitor_log_dir: "logs/monitoring_logs"
 login_fail_limit: 5
 login_fail_window: 60
+mode: "watchdog" 
 mask_user: true
 allowed_countries:
   - BRAZIL
@@ -11,3 +12,9 @@ allowed_countries:
   - CHINA
   - GERMANY
   - INDIA
+
+# if mode is "journalctl", specify services to monitor
+services:
+  - sshd
+  - apache2
+  - nginx
