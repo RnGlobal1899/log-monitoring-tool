@@ -29,29 +29,35 @@ firewall-log-analyzer/
 ## Como usar
 
 1. Instale as dependências
+```bash
 pip install -r requirements.txt
+```
 
 2. Gere logs artificiais de teste
+```bash
 python examples/generate_test_logs.py
-
+```
 Isso criará um arquivo de log de exemplo na pasta definida em config.yaml.
 
 3. Execute o analisador
+```bash
 python src/monitor.py
+```
 
-4. Resultados
+4. Resultados e relatórios
 
 Após a execução, os seguintes arquivos serão atualizados/gerados:
 
-blocked_ips.txt → contém IPs bloqueados por país não permitido
+* **`log_analyzer.db`**: Banco de dados contendo todos os logs processados, IPs bloqueados e alertas gerados.
+* **`logs/monitoring_logs/`**: Contém os logs da própria ferramenta (`system.log`, `alerts.log`, `errors.log`).
 
-alert_ips.txt → contém IPs que ultrapassaram o limite de falhas de login
+### Gerando um Relatório de Segurança
 
-logs/system.log → log geral do sistema
+Para analisar os dados coletados, execute o script de relatório:
 
-logs/alerts.log → registro de alertas gerados
-
-logs/errors.log → registro de erros de execução
+```bash
+python report.py
+```
 
 ## 🔍 Validação Automática dos Logs
 
@@ -106,8 +112,6 @@ python -m pytest -v
 ```
 ## Futuras melhorias
 
-- Leitura contínua de logs (modo "tail")
 - Integração com firewall real (iptables/netsh)
 - Notificações por e-mail ou webhook (Slack/Discord)
-- Armazenamento em banco de dados (SQLite/PostgreSQL)
 - Dashboard web para visualização em tempo real

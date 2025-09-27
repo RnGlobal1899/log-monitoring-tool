@@ -5,6 +5,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 --- 
 
+## [1.3.0] - 2025-09-27
+### Added
+- Persistence layer with **SQLite** to store processed logs, blocked IPs, and alerts.
+- New file: `src/database.py` to manage all database operations.
+- New file: `report.py` to generate security statistics directly from the database.
+
+### Changed
+- Replaced `blocked_ips.txt` and `alert_ips.txt` with the `log_analyzer.db` database.
+- The application now reads the initial state of blocked IPs from the database, ensuring persistence between executions.
+
+---
+
 ## [1.2.0] - 2025-09-15
 ### Added
  - Support for real-time log monitoring
