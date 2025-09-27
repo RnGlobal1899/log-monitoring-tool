@@ -1,8 +1,9 @@
 import sqlite3
+import os
 from collections import Counter
 
 # Database's file
-DB_FILE = "src/log_analyzer.db"
+DB_FILE = os.path.join("data", "log_analyzer.db")
 
 # Generate report
 def generate_report():

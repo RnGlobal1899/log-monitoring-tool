@@ -1,7 +1,8 @@
 import sqlite3
 import os
 
-DB_FILE = "log_analyzer.db"
+DATA_DIR = "data"
+DB_FILE = os.path.join(DATA_DIR, "log_analyzer.db")
 
 # Create and return a connection with the database
 def get_db_connection():
@@ -11,6 +12,7 @@ def get_db_connection():
 
 # Initialize the database and create necessary tables if they don't exist
 def init_db():
+    os.makedirs(DATA_DIR, exist_ok=True)
     if os.path.exists(DB_FILE):
         return
     
