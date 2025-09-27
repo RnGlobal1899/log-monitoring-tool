@@ -6,22 +6,7 @@ import re
 from log_utils import setup_logger, mask_user
 from ip_utils import get_country_by_ip
 from parser import parse_log_line
-
-def load_blocked_ips(filename="blocked_ips.txt"):
-    if not os.path.exists(filename):
-        return set()
-    with open(filename, "r") as f:
-        return set(line.strip().split(" - ")[1] for line in f if line.strip())
-
-def save_blocked_ips(user, ip, country, filename="blocked_ips.txt"):
-    already_saved = set()
-    if os.path.exists(filename):
-        with open(filename, "r") as f:
-            already_saved = set(line.strip().split(" - ")[1] for line in f if line.strip())
-    if ip not in already_saved:
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open(filename, "a") as f:
-            f.write(f"{user} - {ip} - {country} - {timestamp}\n")
+from database import init_db, add_log_entry, add_blocked_ip, add_alert, get_all_blocked_ips, is_ip_alerted
     
 def extract_user_from_error_line(line: str) -> str:
     match = re.search(r"user:\s*([^,]+)", line)
@@ -52,21 +37,23 @@ def process_line(line, logger, config, state):
     
     timestamp, ip, user, action, result = data
 
-    #normalize
+    # Normalize
     action = normalize_action(action)
     result = normalize_result(result)
 
+    country_norm = get_country_by_ip(ip, logger)
+
+    add_log_entry(timestamp, ip, user, action, result, country_norm, line)
+
     if action != "login":
         return
-
-    country_norm = get_country_by_ip(ip, logger)
 
     # Block IPs from not allowed countries
     if country_norm not in state["allowed_countries"]:
         if ip not in state["blocked_ips"]:
             logger.warning(f"IP {ip} from ({country_norm}), user: {mask_user(user)} blocked (country restriction).")
             state["blocked_ips"].add(ip)
-            save_blocked_ips(user, ip, country_norm)
+            add_blocked_ip(ip, user, country_norm, timestamp)
         else:
             if ip not in state["processed_blocks"]:
                 logger.info(f"IP {ip} from ({country_norm}), user: {mask_user(user)} already blocked.")
@@ -84,15 +71,8 @@ def process_line(line, logger, config, state):
 
         if len(state["fail_logins"][ip]) >= state["login_fail_limit"]:
             if ip not in state["alert_ips"]:
-                already_alerted = set()
-                if os.path.exists("alert_ips.txt"):
-                    with open("alert_ips.txt", "r") as alert_file:
-                        already_alerted = set(line.strip().split(" - ")[1] for line in alert_file if line.strip())
-
-                if ip not in already_alerted:
-                    alert_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    with open("alert_ips.txt", "a") as alert_file:
-                        alert_file.write(f"{user} - {ip} - {country_norm} - {alert_time}\n")
+                if not is_ip_alerted(ip):
+                    add_alert(user, ip, country_norm, datetime.datetime.now())
                     logger.warning(f"IP {ip} ({country_norm}), user: {mask_user(user)} exceeded login attempts. Added to alert list.")
                     state["alert_ips"].add(ip)
                 else:
@@ -103,7 +83,7 @@ def process_line(line, logger, config, state):
 def init_state(config):
     return {
         "fail_logins": collections.defaultdict(list),
-        "blocked_ips": load_blocked_ips(),
+        "blocked_ips": get_all_blocked_ips(),
         "alert_ips": set(),
         "processed_blocks": set(),
         "processed_alerts": set(),
@@ -113,6 +93,9 @@ def init_state(config):
     }
 
 def main():
+    # Load database
+    init_db()
+
     # Load config
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)

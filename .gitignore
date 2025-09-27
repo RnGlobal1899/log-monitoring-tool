@@ -11,3 +11,6 @@ __pycache__/
 
 # ingnore pycache folders
 __pycache__/
+
+# Ignore database files
+*.db
