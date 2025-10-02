@@ -27,7 +27,7 @@ def generate_test_logs(log_dir):
 if __name__ == "__main__":
     # caminho relativo ao script
     script_dir = os.path.dirname(__file__)
-    project_root = os.path.abspath(os.path.join(script_dir, ".."))
+    project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
 
     config_path = os.path.join(project_root, "config.yaml")
     with open(config_path, "r") as f:
