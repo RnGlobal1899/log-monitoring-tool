@@ -119,17 +119,29 @@ def process_line(line, logger, config, state):
             if ip not in state["alert_ips"] and not is_ip_alerted(ip):
                     
                 profile = get_or_create_user_profile(user)
-                total_logins = profile['successful_logins'] + profile['failed_logins']
+                
+                current_attack_fails = len(state["fail_logins"][ip])
+                historical_fails = profile['failed_logins'] - current_attack_fails
+                historical_total = profile['successful_logins'] + historical_fails
 
-                if total_logins > 20 and (profile['failed_logins'] / total_logins) < 0.1:
+                if historical_total > 20:
+                    historical_fail_rate = historical_fails / historical_total if historical_total > 0 else 0
+
+                    if historical_fail_rate < 0.05:
                         reason = f"High-confidence brute-force: {len(state['fail_logins'][ip])} failures agaisnt a low-error rate account"
                         add_alert(ip, user, country_norm, datetime.datetime.now(), reason)
                         logger.critical(f"HIGH-CONFIDENCE BRUTE-FORCE DETECTED: User {mask_user(user)} (low fail rate) is under brute-force from IP {ip} ({country_norm}).")
+                    else:
+                        reason = f"Brute-force detected: {len(state['fail_logins'][ip])} failed login attempts"
+                        add_alert(ip, user, country_norm, datetime.datetime.now(), reason)
+                        logger.warning(f"IP {ip} ({country_norm}), user: {mask_user(user)} exceeded login attempts. Added to alert list.")
                 else:
                     reason = f"Brute-force detected: {len(state['fail_logins'][ip])} failed login attempts"
                     add_alert(ip, user, country_norm, datetime.datetime.now(), reason)
                     logger.warning(f"IP {ip} ({country_norm}), user: {mask_user(user)} exceeded login attempts. Added to alert list.")
 
+                state["alert_ips"].add(ip)
+                
 def init_state(config):
     return {
         "fail_logins": collections.defaultdict(list),
