@@ -116,6 +116,19 @@ def process_line(line, logger, state):
     if len(state["fail_logins"][ip]) >= state["login_fail_limit"]:
         if ip not in state["alert_ips"]:
             if not is_ip_alerted(ip):
+
+                profile = get_or_create_user_profile(user)
+                total_logins = profile['successful_logins'] + profile['failed_logins']
+
+                if total_logins > 20:
+                    historical_fail_rate = profile['failed_logins'] / total_logins
+                    if historical_fail_rate < 0.10:
+                        reason = f"High-confidence brute-force: {len(state['fail_logins'][ip])} failures agaisnt a low-error rate account"
+                        add_alert(ip, user, country_norm, datetime.datetime.now(), reason)
+                        logger.critical(f"HIGH-CONFIDENCE BRUTE-FORCE DETECTED: User {mask_user(user)} (low fail rate) is under brute-force from IP {ip} ({country_norm}).")
+                        state["alert_ips"].add(ip)
+                        return
+                    
                 reason = f"Brute-force attack detected: {len(state['fail_logins'][ip])} failed attempts"
                 add_alert(ip, user, country_norm, datetime.datetime.now(), reason)
                 logger.warning(f"IP {ip} ({country_norm}), user: {mask_user(user)} exceeded login attempts. Added to alert list.")
