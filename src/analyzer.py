@@ -1,12 +1,11 @@
 import yaml
 import datetime
 import collections
-import os
 import re
 from log_utils import setup_logger, mask_user
 from ip_utils import get_country_by_ip
 from parser import parse_log_line
-from database import init_db, add_log_entry, add_blocked_ip, add_alert, get_all_blocked_ips, is_ip_alerted
+from database import init_db, add_login_attempt, add_blocked_ip, add_alert, get_all_blocked_ips, is_ip_alerted, get_or_create_user_profile, update_user_profile_country, update_user_login_counters
     
 def extract_user_from_error_line(line: str) -> str:
     match = re.search(r"user:\s*([^,]+)", line)
@@ -27,7 +26,7 @@ def normalize_action(action: str) -> str:
         return "login"
     return action
 
-def process_line(line, logger, config, state):
+def process_line(line, logger, state):
     data = parse_log_line(line)
     if not data:
         masked_user = extract_user_from_error_line(line)
@@ -41,13 +40,31 @@ def process_line(line, logger, config, state):
     action = normalize_action(action)
     result = normalize_result(result)
 
+    # Check if there is a user to create the profile
+    if not user or user == "-":
+        user = "unknown user"
+
     country_norm = get_country_by_ip(ip, logger)
 
-    add_log_entry(timestamp, ip, user, action, result, country_norm, line)
+    add_login_attempt(timestamp, ip, user, result, country_norm, line)
 
     if action != "login":
         return
+    
+    if result == "success":
+        profile = get_or_create_user_profile(user)
+        has_history = profile['successful_logins'] > 0 
+        known_countries = profile['known_countries'].split(",") if profile['known_countries'] else []
 
+        if has_history and country_norm not in known_countries:
+            logger.warning(f"SUSPICIOUS LOGIN: User {mask_user(user)} logged in from a new country: {country_norm} (previous: {known_countries}) (IP: {ip})")
+
+            update_user_profile_country(user, country_norm)
+            update_user_login_counters(user, success=True)
+
+    elif result == "fail":
+        update_user_login_counters(user, success=False)
+                                               
     # Block IPs from not allowed countries
     if country_norm not in state["allowed_countries"]:
         if ip not in state["blocked_ips"]:
@@ -64,21 +81,21 @@ def process_line(line, logger, config, state):
         return
 
     # Count failed logins
-    if result == "fail":
-        state["fail_logins"][ip].append(timestamp)
-        window_start = timestamp - datetime.timedelta(seconds=state["login_fail_window"])
-        state["fail_logins"][ip] = [t for t in state["fail_logins"][ip] if t >= window_start]
+    state["fail_logins"][ip].append(timestamp)
+    window_start = timestamp - datetime.timedelta(seconds=state["login_fail_window"])
+    state["fail_logins"][ip] = [t for t in state["fail_logins"][ip] if t >= window_start]
 
-        if len(state["fail_logins"][ip]) >= state["login_fail_limit"]:
-            if ip not in state["alert_ips"]:
-                if not is_ip_alerted(ip):
-                    add_alert(user, ip, country_norm, datetime.datetime.now())
-                    logger.warning(f"IP {ip} ({country_norm}), user: {mask_user(user)} exceeded login attempts. Added to alert list.")
-                    state["alert_ips"].add(ip)
-                else:
-                    if ip not in state["processed_alerts"]:
-                        logger.info(f"IP {ip} ({country_norm}), user: {mask_user(user)} exceeded login fail limit. Already in alert list.")
-                    state["processed_alerts"].add(ip)
+    if len(state["fail_logins"][ip]) >= state["login_fail_limit"]:
+        if ip not in state["alert_ips"]:
+            if not is_ip_alerted(ip):
+                reason = f"Brute-force attack detected: {len(state['fail_logins'][ip])} failed attempts"
+                add_alert(ip, user, country_norm, datetime.datetime.now(), reason)
+                logger.warning(f"IP {ip} ({country_norm}), user: {mask_user(user)} exceeded login attempts. Added to alert list.")
+                state["alert_ips"].add(ip)
+            else:
+                if ip not in state["processed_alerts"]:
+                    logger.info(f"IP {ip} ({country_norm}), user: {mask_user(user)} exceeded login fail limit. Already in alert list.")
+                state["processed_alerts"].add(ip)
 
 def init_state(config):
     return {
@@ -109,10 +126,10 @@ def main():
     mode = config.get("mode", "watchdog")  # "watchdog" or "journalctl"
 
     if mode == "watchdog":
-        start_watchdog(config["log_dir"], logger, lambda line: process_line(line, logger, config, state))
+        start_watchdog(config["log_dir"], logger, lambda line: process_line(line, logger, state))
     elif mode == "journalctl":
         services = config.get("services", ["sshd", "apache2", "nginx"])
-        stream_journal(services, lambda line: process_line(line, logger, config, state), logger)
+        stream_journal(services, lambda line: process_line(line, logger, state), logger)
     else:
         logger.error(f"Unknown mode: {mode}")     
 
