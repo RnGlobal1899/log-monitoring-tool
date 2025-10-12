@@ -64,7 +64,35 @@ def process_line(line, logger, state):
 
     elif result == "fail":
         update_user_login_counters(user, success=False)
-                                               
+
+        # Spraying and distributed attack logic
+        now = datetime.datetime.now()
+        window = datetime.timedelta(seconds=state.get("attack_detection_window", 300))
+
+        # Detection of password spraying
+        state["ip_to_user"][ip].append((now, user))
+        state["ip_to_user"][ip] = [t for t in state["ip_to_user"][ip] if now - t[0] < window]
+        unique_users = len(set(t[1] for t in state["ip_to_user"][ip])) 
+
+        ip_limit = state.get("ip_to_user_limit", 10)
+        if unique_users > ip_limit:
+            reason = f"Password spraying: IP tried to access {unique_users} accounts"
+            logger.warning(f"PASSWORD SPRAYING DETECTED: IP {ip} ({country_norm}) tried to access {unique_users} accounts.")
+            add_alert(ip, None, country_norm, now, reason)
+            state["ip_to_user"][ip] = []  # Reset after alert
+
+        # Detection of distributed attack
+        state["user_to_ips"][user].append((now, ip))
+        state["user_to_ips"][user] = [t for t in state["user_to_ips"][user] if now - t[0] < window]
+        unique_ips = len(set(t[1] for t in state["user_to_ips"][user]))
+
+        user_limit = state.get("user_to_ip_limit", 20)
+        if unique_ips >= user_limit:
+            reason = f"Distributed attack: User account targeted from {unique_ips} IPs"
+            logger.warning(f"DISTRIBUTED ATTACK DETECTED: User {mask_user(user)} targeted from {unique_ips} IPs.")
+            add_alert(None, user, None, now, reason)
+            state["user_to_ips"][user] = []  # Reset after alert
+
     # Block IPs from not allowed countries
     if country_norm not in state["allowed_countries"]:
         if ip not in state["blocked_ips"]:
@@ -104,6 +132,8 @@ def init_state(config):
         "alert_ips": set(),
         "processed_blocks": set(),
         "processed_alerts": set(),
+        "ip_to_user": collections.defaultdict(set),
+        "user_to_ips": collections.defaultdict(set),
         "allowed_countries": set(config["allowed_countries"]),
         "login_fail_limit": config["login_fail_limit"],
         "login_fail_window": config["login_fail_window"],

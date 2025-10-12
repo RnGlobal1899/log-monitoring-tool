@@ -18,3 +18,7 @@ services:
   - sshd
   - apache2
   - nginx
+
+attack_detection_window: 300
+ip_to_user_limit: 10
+user_to_ip_limit: 20
