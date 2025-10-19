@@ -16,17 +16,7 @@ LOG_FORMATS: Dict[str, Dict] = {
         ),
     },
     "apache": {
-        "regex": r'([\d\.]+) - (.*?) \[(\d{2}/\w{3}/\d{4}:\d{2}:\d{2}:\d{2}) [+\-]\d{4}\] "(\S+) (.*?) (\S+)" (\d{3}) (\d+)',
-        "parser": lambda m: (
-            datetime.datetime.strptime(m.group(3), "%d/%b/%Y:%H:%M:%S"),
-            m.group(1),  # ip
-            m.group(2),  # user
-            m.group(4),  # action
-            m.group(7),  # status
-        ),
-    },
-    "nginx": {  
-        "regex": r'([\d\.]+) - (.*?) \[(\d{2}/\w{3}/\d{4}:\d{2}:\d{2}:\d{2}) [+\-]\d{4}\] "(\S+) (.*?) (\S+)" (\d{3}) (\d+)',
+        "regex": r'((?:\d{1,3}\.){3}\d{1,3}) - (.*?) \[(\d{2}/\w{3}/\d{4}:\d{2}:\d{2}:\d{2}) [+\-]\d{4}\] "(\S+) (.*?) (\S+)" (\d{3}) (\d+)',
         "parser": lambda m: (
             datetime.datetime.strptime(m.group(3), "%d/%b/%Y:%H:%M:%S"),
             m.group(1),  # ip
@@ -36,7 +26,7 @@ LOG_FORMATS: Dict[str, Dict] = {
         ),
     },
     "ssh": {
-        "regex": r'(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2}) .*sshd.* (Failed|Accepted) password for (invalid user )?(.+?)(?=\s+from) from ([\d\.]+)',
+        "regex": r'(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2}) .*sshd.* (Failed|Accepted) password for (invalid user )?(.+?)(?=\s+from) from ((?:\d{1,3}\.){3}\d{1,3})',
         "parser": lambda m: (
             datetime.datetime.strptime(m.group(1), "%b %d %H:%M:%S").replace(year=datetime.datetime.now().year),
             m.group(5),  # ip
@@ -57,6 +47,9 @@ def read_logs(files):
                 yield line.strip()
 
 def parse_log_line(line: str) -> Optional[Tuple]:
+    if not line or not line.strip():
+        return None
+    
     for fmt_name, fmt in LOG_FORMATS.items():
         match = re.search(fmt["regex"], line)
         if match:
