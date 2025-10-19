@@ -53,10 +53,12 @@ def process_line(line, logger, config, state):
     
     if result == "success":
         profile = get_or_create_user_profile(user)
-        has_history = profile['successful_logins'] > 0 
+        min_history_threshold = config.get("suspicious_login_min_history", 10)
+
+        has_sufficient_history = profile['successful_logins'] >= min_history_threshold
         known_countries = profile['known_countries'].split(",") if profile['known_countries'] else []
 
-        if has_history and country_norm not in known_countries:
+        if has_sufficient_history and country_norm not in known_countries:
             logger.warning(f"SUSPICIOUS LOGIN: User {mask_user(user)} logged in from a new country: {country_norm} (IP: {ip}); (previous: {known_countries})")
 
         update_user_profile_country(user, country_norm)
