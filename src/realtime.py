@@ -13,15 +13,20 @@ class LogHandler(FileSystemEventHandler):
         self.file_positions = {}
 
     def on_modified(self, event):
-        if event.is_directory or not event.src_path.endswith(".log"):
+        if event.is_directory: 
             return
+        
+        if not (event.src_path.endswith(".log") or event.src_path.endswith(".csv")):
+            return
+
         try:
-            with open(event.src_path, "r", encoding="utf-8") as f:
+            with open(event.src_path, "r", encoding="utf-8", errors = "ignore") as f:
                 last_position = self.file_positions.get(event.src_path, 0)
                 f.seek(last_position)
 
                 for line in f:
-                    self.process_line(line.strip())
+                    if line.strip():
+                        self.process_line(line.strip())
 
                 self.file_positions[event.src_path] = f.tell()
         except Exception as e:
