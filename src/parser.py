@@ -38,7 +38,7 @@ LOG_FORMATS: Dict[str, Dict] = {
 }
 
 def get_log_files(log_dir):
-    return (os.path.join(log_dir, f) for f in os.listdir(log_dir) if f.endswith(".log"))
+    return (os.path.join(log_dir, f) for f in os.listdir(log_dir) if f.endswith(".log") or f.endswith(".csv"))
 
 def read_logs(files):
     for file in files:
@@ -46,10 +46,33 @@ def read_logs(files):
             for line in f:
                 yield line.strip()
 
+def parse_windows_csv(line: str) -> Optional[Tuple]:
+    try:
+        parts = line.strip().split(',')
+        if len(parts) < 5: return None
+        if parts[0] == "Timestamp": return None # Skip header
+
+        timestamp = datetime.datetime.strptime(parts[0], "%Y-%m-%d %H:%M:%S")
+        ip = parts[1]
+        user = parts[2]
+        action = parts[3]
+        result = parts[4].lower()
+        if result == "4624": result = "success"
+        if result == "4625": result = "failure"
+
+        return (timestamp, ip, user, action, result)
+    except Exception:
+        return None
+
 def parse_log_line(line: str) -> Optional[Tuple]:
     if not line or not line.strip():
         return None
     
+    if "n" in line:
+        csv_data = parse_windows_csv(line)
+        if csv_data:
+            return csv_data
+        
     for fmt_name, fmt in LOG_FORMATS.items():
         match = re.search(fmt["regex"], line)
         if match:

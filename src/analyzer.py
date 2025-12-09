@@ -36,6 +36,15 @@ def process_line(line, logger, config, state):
     
     timestamp, ip, user, action, result = data
 
+    clean_user = user.replace("-TEST", "") if user.endswith("-TEST") else user
+
+    if user.endswith("$") or user.endswith("$-TEST"):
+        return # Skip machine accounts
+    
+    system_accounts = ["SYSTEM", "ANONYMOUS LOGON", "LOCAL SERVICE", "NETWORK SERVICE"]
+    if clean_user in system_accounts:
+        return  # Skip system accounts
+
     # Normalize
     action = normalize_action(action)
     result = normalize_result(result)
