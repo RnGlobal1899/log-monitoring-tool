@@ -17,3 +17,6 @@ __pycache__/
 
 # Ignore application data
 /data/
+
+# Ignore scripts tests folders
+/scripts/windows_agent_test
